@@ -1,0 +1,6 @@
+{
+  "name": "맥아더 강해설교 분석기 (MacArthur Sermon Analyzer)",
+  "description": "존 맥아더 목사의 강해설교 마스터 클래스 이론을 바탕으로 현대 교회들의 설교를 비판적으로 분석하고 평가하는 신학적 파트너 앱입니다.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
