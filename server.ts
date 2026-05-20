@@ -4,7 +4,9 @@ import fs from "fs/promises";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 
-const DATA_FILE = path.join(process.cwd(), "sermon_history.json");
+const DATA_FILE = process.env.VERCEL 
+  ? path.join("/tmp", "sermon_history.json")
+  : path.join(process.cwd(), "sermon_history.json");
 
 async function startServer() {
   const app = express();
@@ -338,13 +340,13 @@ ${reconstructedSermon}
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  if (!process.env.VERCEL && process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
@@ -352,9 +354,17 @@ ${reconstructedSermon}
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
+  if (!process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+  
+  return app;
 }
 
-startServer();
+const appPromise = startServer();
+export default async function (req: any, res: any) {
+  const app = await appPromise;
+  app(req, res);
+}
