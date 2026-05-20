@@ -103,7 +103,7 @@ async function startServer() {
 
       let response;
       let attempt = 0;
-      const maxRetries = 3;
+      const maxRetries = 5;
 
       while (attempt < maxRetries) {
         try {
@@ -120,17 +120,19 @@ async function startServer() {
           break;
         } catch (err: any) {
           attempt++;
-          console.error(`Gemini API Error (Attempt ${attempt}):`, err.message);
+          console.error(`Gemini API Error (Attempt ${attempt}):`, err.message || err);
           
-          const isRetryable = err.status === 503 || err.status === 429 || 
-                              err.message?.includes("503") || err.message?.includes("429") ||
-                              err.message?.includes("high demand") || err.message?.includes("quota");
+          const errString = String(err.message || err).toLowerCase();
+          const isRetryable = err.status === 503 || err.status === 429 || err.code === 503 || err.code === 429 ||
+                              errString.includes("503") || errString.includes("429") ||
+                              errString.includes("high demand") || errString.includes("quota") ||
+                              errString.includes("unavailable");
           
           if (attempt >= maxRetries || !isRetryable) {
             throw err;
           }
           
-          const waitTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+          const waitTime = (Math.pow(2, attempt) * 2000) + (Math.random() * 2000); // 4s, 8s, 16s, 32s...
           console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
@@ -207,7 +209,7 @@ async function startServer() {
 
       let response;
       let attempt = 0;
-      const maxRetries = 3;
+      const maxRetries = 5;
 
       while (attempt < maxRetries) {
         try {
@@ -222,17 +224,20 @@ async function startServer() {
           break;
         } catch (err: any) {
           attempt++;
-          console.error(`Gemini API Error (Attempt ${attempt}):`, err.message);
+          console.error(`Gemini API Error (Attempt ${attempt}):`, err.message || err);
           
-          const isRetryable = err.status === 503 || err.status === 429 || 
-                              err.message?.includes("503") || err.message?.includes("429") ||
-                              err.message?.includes("high demand") || err.message?.includes("quota");
+          const errString = String(err.message || err).toLowerCase();
+          const isRetryable = err.status === 503 || err.status === 429 || err.code === 503 || err.code === 429 ||
+                              errString.includes("503") || errString.includes("429") ||
+                              errString.includes("high demand") || errString.includes("quota") ||
+                              errString.includes("unavailable");
           
           if (attempt >= maxRetries || !isRetryable) {
             throw err;
           }
           
-          const waitTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+          const waitTime = (Math.pow(2, attempt) * 2000) + (Math.random() * 2000);
+          console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
@@ -287,7 +292,7 @@ ${reconstructedSermon}
 
       let response;
       let attempt = 0;
-      const maxRetries = 3;
+      const maxRetries = 5;
 
       while (attempt < maxRetries) {
         try {
@@ -302,17 +307,20 @@ ${reconstructedSermon}
           break;
         } catch (err: any) {
           attempt++;
-          console.error(`Gemini API Error (Attempt ${attempt}):`, err.message);
+          console.error(`Gemini API Error (Attempt ${attempt}):`, err.message || err);
           
-          const isRetryable = err.status === 503 || err.status === 429 || 
-                              err.message?.includes("503") || err.message?.includes("429") ||
-                              err.message?.includes("high demand") || err.message?.includes("quota");
+          const errString = String(err.message || err).toLowerCase();
+          const isRetryable = err.status === 503 || err.status === 429 || err.code === 503 || err.code === 429 ||
+                              errString.includes("503") || errString.includes("429") ||
+                              errString.includes("high demand") || errString.includes("quota") ||
+                              errString.includes("unavailable");
           
           if (attempt >= maxRetries || !isRetryable) {
             throw err;
           }
           
-          const waitTime = Math.pow(2, attempt) * 1000 + Math.random() * 1000;
+          const waitTime = (Math.pow(2, attempt) * 2000) + (Math.random() * 2000);
+          console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
       }
