@@ -96,11 +96,14 @@ export default function App() {
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.includes("application/json")) {
           const errData = await response.json();
-          throw new Error(errData.error || 'Failed to analyze sermon.');
+          throw new Error(errData.error || '설교 분석 중 오류가 발생했습니다.');
         } else {
           const text = await response.text();
           console.error("Non-JSON error response:", text);
-          throw new Error(`서버 오류가 발생했습니다 (${response.status}). 텍스트가 너무 길거나 일시적인 장애일 수 있습니다.`);
+          if (response.status === 504 || response.status === 500) {
+            throw new Error(`서버 타임아웃(${response.status}): 텍스트가 너무 길어 Vercel 무료 티어의 처리 시간(10초)을 초과했거나 과부하가 발생했습니다.`);
+          }
+          throw new Error(`서버 오류가 발생했습니다 (${response.status}). 일시적인 장애일 수 있습니다.`);
         }
       }
       
@@ -131,14 +134,23 @@ export default function App() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to reconstruct sermon.');
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errData = await response.json();
+          throw new Error(errData.error || '설교문 재구성에 실패했습니다.');
+        } else {
+          if (response.status === 504 || response.status === 500) {
+            throw new Error('서버 타임아웃: 구글 AI 응답이나 서버 처리 시간이 지연되고 있습니다.');
+          }
+          throw new Error('서버 오류로 인해 설교문 재구성에 실패했습니다.');
+        }
       }
       
       const data = await response.json();
       setReconstructedSermon(data.sermon);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('설교문 재구성에 실패했습니다.');
+      alert(err.message || '설교문 재구성에 실패했습니다.');
     } finally {
       setIsReconstructing(false);
     }
@@ -159,14 +171,23 @@ export default function App() {
       });
       
       if (!response.ok) {
-        throw new Error('Failed to expand sermon.');
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const errData = await response.json();
+          throw new Error(errData.error || '설교문 확장에 실패했습니다.');
+        } else {
+          if (response.status === 504 || response.status === 500) {
+            throw new Error('서버 타임아웃: 기능 확장에 필요한 서버 응답 시간이 초과되었습니다.');
+          }
+          throw new Error('서버 오류로 인해 설교문 확장에 실패했습니다.');
+        }
       }
       
       const data = await response.json();
       setReconstructedSermon(data.sermon);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('설교문 확장에 실패했습니다.');
+      alert(err.message || '설교문 확장에 실패했습니다.');
     } finally {
       setIsExpanding(false);
     }

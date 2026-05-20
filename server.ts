@@ -105,7 +105,7 @@ async function startServer() {
 
       let response;
       let attempt = 0;
-      const maxRetries = 5;
+      const maxRetries = 3;
 
       while (attempt < maxRetries) {
         try {
@@ -131,10 +131,16 @@ async function startServer() {
                               errString.includes("unavailable");
           
           if (attempt >= maxRetries || !isRetryable) {
+            // Translate common Gemini errors to user-friendly messages
+            if (errString.includes("503") || errString.includes("high demand") || errString.includes("unavailable")) {
+              throw new Error("구글 AI(Gemini) 서버에 일시적으로 트래픽이 몰려 지연되고 있습니다. 1~2분 뒤에 다시 시도해주세요.");
+            } else if (errString.includes("429") || errString.includes("quota")) {
+              throw new Error("API 할당량을 초과했습니다. 잠시 후 오류가 지속되면 관리자에게 문의하세요.");
+            }
             throw err;
           }
           
-          const waitTime = (Math.pow(2, attempt) * 2000) + (Math.random() * 2000); // 4s, 8s, 16s, 32s...
+          const waitTime = (Math.pow(2, attempt) * 1000) + (Math.random() * 500); // 2s, 4s, 8s max
           console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
@@ -211,7 +217,7 @@ async function startServer() {
 
       let response;
       let attempt = 0;
-      const maxRetries = 5;
+      const maxRetries = 3;
 
       while (attempt < maxRetries) {
         try {
@@ -235,10 +241,15 @@ async function startServer() {
                               errString.includes("unavailable");
           
           if (attempt >= maxRetries || !isRetryable) {
+            if (errString.includes("503") || errString.includes("high demand") || errString.includes("unavailable")) {
+              throw new Error("구글 AI(Gemini) 서버에 일시적으로 트래픽이 몰려 지연되고 있습니다. 1~2분 뒤에 다시 시도해주세요.");
+            } else if (errString.includes("429") || errString.includes("quota")) {
+              throw new Error("API 할당량을 초과했습니다. 잠시 후 에러 현상이 계속되면 관리자에게 문의하세요.");
+            }
             throw err;
           }
           
-          const waitTime = (Math.pow(2, attempt) * 2000) + (Math.random() * 2000);
+          const waitTime = (Math.pow(2, attempt) * 1000) + (Math.random() * 500);
           console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
@@ -294,7 +305,7 @@ ${reconstructedSermon}
 
       let response;
       let attempt = 0;
-      const maxRetries = 5;
+      const maxRetries = 3;
 
       while (attempt < maxRetries) {
         try {
@@ -318,10 +329,15 @@ ${reconstructedSermon}
                               errString.includes("unavailable");
           
           if (attempt >= maxRetries || !isRetryable) {
+            if (errString.includes("503") || errString.includes("high demand") || errString.includes("unavailable")) {
+              throw new Error("구글 AI(Gemini) 서버에 일시적으로 트래픽이 몰려 지연되고 있습니다. 1~2분 뒤에 다시 시도해주세요.");
+            } else if (errString.includes("429") || errString.includes("quota")) {
+              throw new Error("API 할당량을 초과했습니다. 잠시 후 에러 현상이 계속되면 관리자에게 문의하세요.");
+            }
             throw err;
           }
           
-          const waitTime = (Math.pow(2, attempt) * 2000) + (Math.random() * 2000);
+          const waitTime = (Math.pow(2, attempt) * 1000) + (Math.random() * 500);
           console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
