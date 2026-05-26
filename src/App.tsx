@@ -38,16 +38,76 @@ export default function App() {
   const [reconstructedSermon, setReconstructedSermon] = useState<string | null>(null);
   const [isReconstructing, setIsReconstructing] = useState(false);
   const [isExpanding, setIsExpanding] = useState(false);
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [apiKey, setApiKey] = useState(() => {
+    try {
+      const storedEnc = localStorage.getItem('gemini_api_key_enc');
+      if (storedEnc) {
+        return decodeURIComponent(atob(storedEnc));
+      }
+      const stored = localStorage.getItem('gemini_api_key');
+      if (stored) return stored;
+    } catch(e) {
+      console.warn("Failed to read API key from local storage", e);
+    }
+    return '';
+  });
   const [showSettings, setShowSettings] = useState(false);
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [testMessage, setTestMessage] = useState('');
 
   useEffect(() => {
-    localStorage.setItem('gemini_api_key', apiKey);
+    if (apiKey) {
+      try {
+        const encrypted = btoa(encodeURIComponent(apiKey));
+        localStorage.setItem('gemini_api_key_enc', encrypted);
+        localStorage.removeItem('gemini_api_key');
+      } catch(e) {
+        // Fallback if btoa fails
+        localStorage.setItem('gemini_api_key', apiKey);
+      }
+    } else {
+      localStorage.removeItem('gemini_api_key_enc');
+      localStorage.removeItem('gemini_api_key');
+    }
   }, [apiKey]);
 
   useEffect(() => {
     fetchHistory();
   }, []);
+
+  const handleTestConnection = async () => {
+    if (!apiKey.trim()) {
+      setTestStatus('error');
+      setTestMessage('API 키를 입력해주세요.');
+      return;
+    }
+
+    setTestStatus('testing');
+    setTestMessage('연결 테스트 중...');
+
+    try {
+      const response = await fetch('/api/test-key', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': apiKey
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTestStatus('success');
+        setTestMessage(data.message || '연결 성공! API 키가 유효하며 안전하게 암호화되어 저장되었습니다.');
+      } else {
+        const err = await response.json();
+        setTestStatus('error');
+        setTestMessage(err.error || '연결 실패. API 키가 올바른지 확인해주세요.');
+      }
+    } catch (err: any) {
+      setTestStatus('error');
+      setTestMessage('서버 오류로 인해 연결 테스트에 실패했습니다.');
+    }
+  };
 
   const fetchHistory = async () => {
     try {
@@ -805,7 +865,7 @@ export default function App() {
               <div className="p-6">
                 <p className="text-sm text-stone-600 mb-4 leading-relaxed">
                   존 맥아더 스튜디오는 외장형 API Key 방식으로 작동합니다.
-                  구글 AI(Gemini) API 키를 아래에 입력해주세요. 키는 브라우저 로컬 저장소에만 안전하게 보관됩니다.
+                  구글 AI(Gemini) API 키를 아래에 입력해주세요. 키는 브라우저 로컬 드라이브에 안전하게 <b>암호화(Base64)되어 저장</b>됩니다.
                 </p>
                 <div className="mb-6">
                   <label htmlFor="apiKey" className="block text-sm font-semibold text-stone-700 mb-2">Gemini API Key</label>
@@ -813,19 +873,40 @@ export default function App() {
                     id="apiKey"
                     type="password"
                     value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    onChange={(e) => {
+                      setApiKey(e.target.value);
+                      setTestStatus('idle');
+                      setTestMessage('');
+                    }}
                     placeholder="AIzaSy..."
                     autoComplete="off"
                     className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 bg-white shadow-sm transition outline-none text-stone-800 font-mono text-sm"
                   />
-                  <div className="mt-2 text-xs text-stone-500 flex justify-end">
-                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-amber-600 hover:text-amber-700 hover:underline">API 키 발급받기 &rarr;</a>
+                  <div className="mt-2 text-xs text-stone-500 flex justify-between items-center">
+                    <span>
+                      {testStatus === 'testing' && <span className="text-blue-500 flex items-center gap-1"><RefreshCw size={12} className="animate-spin" /> {testMessage}</span>}
+                      {testStatus === 'success' && <span className="text-emerald-500 flex items-center gap-1"><CheckCircle size={12} /> {testMessage}</span>}
+                      {testStatus === 'error' && <span className="text-red-500 flex items-center gap-1"><AlertTriangle size={12} /> {testMessage}</span>}
+                    </span>
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-amber-600 hover:text-amber-700 hover:underline shrink-0 ml-4">API 키 발급받기 &rarr;</a>
                   </div>
                 </div>
                 
                 <div className="flex justify-end gap-3 pt-2">
                   <button
-                    onClick={() => setShowSettings(false)}
+                    onClick={handleTestConnection}
+                    disabled={testStatus === 'testing' || !apiKey.trim()}
+                    className="px-5 py-2.5 rounded-xl border border-amber-600 bg-amber-600 text-white hover:bg-amber-700 transition-colors font-medium text-sm disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {testStatus === 'testing' ? <RefreshCw size={16} className="animate-spin" /> : <Activity size={16} />}
+                    연결 테스트 및 저장
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSettings(false);
+                      setTestStatus('idle');
+                      setTestMessage('');
+                    }}
                     className="px-5 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors font-medium text-sm"
                   >
                     닫기

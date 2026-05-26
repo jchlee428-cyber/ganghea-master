@@ -46,6 +46,35 @@ async function startServer() {
     }
   });
 
+  // API Route for testing Gemini API Key
+  app.post("/api/test-key", async (req, res) => {
+    try {
+      const clientApiKey = req.headers['x-gemini-api-key'] as string;
+      const apiKey = clientApiKey || process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
+        return res.status(401).json({ error: "Gemini API key is missing." });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+      
+      // Make a tiny generation request to verify the key
+      await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: "List the first 3 letters of alphabet",
+        config: {
+            temperature: 0.1,
+            maxOutputTokens: 5
+        }
+      });
+      
+      res.json({ success: true, message: "Valid API key." });
+    } catch (error: any) {
+      console.error("API test error:", error);
+      res.status(400).json({ error: "유효하지 않은 API 키이거나 연결에 실패했습니다." });
+    }
+  });
+
   // API Route for analyzing sermon
   app.post("/api/analyze", async (req, res) => {
     try {
