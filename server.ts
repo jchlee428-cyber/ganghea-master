@@ -143,7 +143,7 @@ async function startServer() {
             throw err;
           }
           
-          const waitTime = (Math.pow(2, attempt) * 1000) + (Math.random() * 500); // 2s, 4s, 8s max
+          const waitTime = 1000 + (Math.random() * 500); // wait approx 1-1.5s
           console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
@@ -255,7 +255,7 @@ async function startServer() {
             throw err;
           }
           
-          const waitTime = (Math.pow(2, attempt) * 1000) + (Math.random() * 500);
+          const waitTime = 1000 + (Math.random() * 500);
           console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
@@ -346,7 +346,7 @@ ${reconstructedSermon}
             throw err;
           }
           
-          const waitTime = (Math.pow(2, attempt) * 1000) + (Math.random() * 500);
+          const waitTime = 1000 + (Math.random() * 500);
           console.log(`Waiting ${Math.round(waitTime)}ms before retry...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
         }
