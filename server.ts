@@ -50,15 +50,18 @@ async function startServer() {
   app.post("/api/analyze", async (req, res) => {
     try {
       const { title, text } = req.body;
+      const clientApiKey = req.headers['x-gemini-api-key'] as string;
+      const apiKey = clientApiKey || process.env.GEMINI_API_KEY;
+
       if (!text) {
         return res.status(400).json({ error: "Sermon text is required." });
       }
 
-      if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: "Gemini API key is missing." });
+      if (!apiKey) {
+        return res.status(401).json({ error: "Gemini API key is missing. Please set your API key in the settings." });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
 
       const schema: Schema = {
         type: Type.OBJECT,
@@ -185,15 +188,18 @@ async function startServer() {
   app.post("/api/reconstruct", async (req, res) => {
     try {
       const { title, text, summary } = req.body;
+      const clientApiKey = req.headers['x-gemini-api-key'] as string;
+      const apiKey = clientApiKey || process.env.GEMINI_API_KEY;
+
       if (!text && !summary) {
         return res.status(400).json({ error: "Sermon text or summary is required." });
       }
 
-      if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: "Gemini API key is missing." });
+      if (!apiKey) {
+        return res.status(401).json({ error: "Gemini API key is missing. Please set your API key in the settings." });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       
       const systemInstruction = `
 너는 존 맥아더(John MacArthur)의 강해설교 신학(Expository Preaching)을 철저히 따르는 수석 목사야.
@@ -271,15 +277,18 @@ async function startServer() {
   app.post("/api/expand-reconstruct", async (req, res) => {
     try {
       const { title, reconstructedSermon } = req.body;
+      const clientApiKey = req.headers['x-gemini-api-key'] as string;
+      const apiKey = clientApiKey || process.env.GEMINI_API_KEY;
+
       if (!reconstructedSermon) {
         return res.status(400).json({ error: "Reconstructed sermon text is required." });
       }
 
-      if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: "Gemini API key is missing." });
+      if (!apiKey) {
+        return res.status(401).json({ error: "Gemini API key is missing. Please set your API key in the settings." });
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       
       const systemInstruction = `
 너는 존 맥아더(John MacArthur)의 강해설교 신학(Expository Preaching)을 철저히 따르는 수석 목사야.

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Send, AlertTriangle, CheckCircle, BrainCircuit, Activity, ChevronRight, RefreshCw, History as HistoryIcon, X, Trash2, MessageSquareQuote, Share2, Copy, Info, Download } from 'lucide-react';
+import { BookOpen, Send, AlertTriangle, CheckCircle, BrainCircuit, Activity, ChevronRight, RefreshCw, History as HistoryIcon, X, Trash2, MessageSquareQuote, Share2, Copy, Info, Download, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2pdf from 'html2pdf.js';
 import Markdown from 'react-markdown';
@@ -38,6 +38,12 @@ export default function App() {
   const [reconstructedSermon, setReconstructedSermon] = useState<string | null>(null);
   const [isReconstructing, setIsReconstructing] = useState(false);
   const [isExpanding, setIsExpanding] = useState(false);
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [showSettings, setShowSettings] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('gemini_api_key', apiKey);
+  }, [apiKey]);
 
   useEffect(() => {
     fetchHistory();
@@ -80,6 +86,11 @@ export default function App() {
   const handleAnalyze = async () => {
     if (!sermonText.trim()) return;
     
+    if (!apiKey.trim()) {
+      setShowSettings(true);
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
     setReconstructedSermon(null);
@@ -88,7 +99,10 @@ export default function App() {
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': apiKey
+        },
         body: JSON.stringify({ title: sermonTitle, text: sermonText }),
       });
       
@@ -121,11 +135,19 @@ export default function App() {
   const handleReconstruct = async () => {
     if (!result) return;
     
+    if (!apiKey.trim()) {
+      setShowSettings(true);
+      return;
+    }
+
     setIsReconstructing(true);
     try {
       const response = await fetch('/api/reconstruct', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': apiKey
+        },
         body: JSON.stringify({ 
           title: sermonTitle, 
           text: sermonText,
@@ -159,11 +181,19 @@ export default function App() {
   const handleExpandSermon = async () => {
     if (!reconstructedSermon) return;
     
+    if (!apiKey.trim()) {
+      setShowSettings(true);
+      return;
+    }
+
     setIsExpanding(true);
     try {
       const response = await fetch('/api/expand-reconstruct', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-gemini-api-key': apiKey
+        },
         body: JSON.stringify({ 
           title: sermonTitle, 
           reconstructedSermon 
@@ -384,15 +414,22 @@ export default function App() {
           <BookOpen size={240} />
         </div>
         <div className="max-w-5xl mx-auto relative z-10">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex flex-wrap items-center gap-3 mb-2">
             <button 
               onClick={() => setIsSidebarOpen(true)} 
-              className="flex items-center gap-2 px-3 py-1.5 bg-stone-800/80 hover:bg-stone-700 text-stone-300 rounded-full text-sm font-medium transition-all mr-2"
+              className="flex items-center gap-2 px-3 py-1.5 bg-stone-800/80 hover:bg-stone-700 text-stone-300 rounded-full text-sm font-medium transition-all"
             >
               <HistoryIcon size={16} /> 이전 기록
             </button>
+            <button 
+              onClick={() => setShowSettings(true)} 
+              className="flex items-center gap-2 px-3 py-1.5 bg-stone-800/80 hover:bg-stone-700 text-stone-300 rounded-full text-sm font-medium transition-all mr-2"
+            >
+              <Settings size={16} /> 설정
+            </button>
+            <div className="h-4 w-px bg-stone-700 hidden sm:block mx-1"></div>
             <BookOpen className="text-amber-400" size={28} />
-            <span className="font-semibold text-stone-300 tracking-wider text-sm">신학적 분석</span>
+            <span className="font-semibold text-stone-300 tracking-wider text-sm whitespace-nowrap">신학적 분석</span>
           </div>
           <h1 className="text-3xl md:text-5xl font-bold font-serif mb-3 tracking-tight">강해설교 마스터 클래스</h1>
           <p className="text-stone-400 max-w-2xl text-lg">
@@ -738,6 +775,68 @@ export default function App() {
         </AnimatePresence>
 
       </main>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden border border-stone-200"
+            >
+              <div className="flex justify-between items-center p-5 border-b border-stone-100 bg-stone-50">
+                <h3 className="font-bold text-lg text-stone-800 flex items-center gap-2">
+                  <Settings size={20} className="text-stone-500" /> API 설정
+                </h3>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="text-stone-400 hover:text-stone-700 transition"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-stone-600 mb-4 leading-relaxed">
+                  존 맥아더 스튜디오는 외장형 API Key 방식으로 작동합니다.
+                  구글 AI(Gemini) API 키를 아래에 입력해주세요. 키는 브라우저 로컬 저장소에만 안전하게 보관됩니다.
+                </p>
+                <div className="mb-6">
+                  <label htmlFor="apiKey" className="block text-sm font-semibold text-stone-700 mb-2">Gemini API Key</label>
+                  <input
+                    id="apiKey"
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    autoComplete="off"
+                    className="w-full px-4 py-3 rounded-xl border border-stone-300 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 bg-white shadow-sm transition outline-none text-stone-800 font-mono text-sm"
+                  />
+                  <div className="mt-2 text-xs text-stone-500 flex justify-end">
+                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-amber-600 hover:text-amber-700 hover:underline">API 키 발급받기 &rarr;</a>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="px-5 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors font-medium text-sm"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
