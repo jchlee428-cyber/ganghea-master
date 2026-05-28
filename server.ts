@@ -102,12 +102,26 @@ async function startServer() {
           strengths: {
             description: "존 맥아더의 원칙에 부합하는 긍정적인 부분 목록 (Strengths)",
             type: Type.ARRAY,
-            items: { type: Type.STRING }
+            items: { 
+              type: Type.OBJECT,
+              properties: {
+                point: { type: Type.STRING, description: "핵심 요약 (예: 철저한 본문 중심성)" },
+                rationale: { type: Type.STRING, description: "존 맥아더의 신학적 근거 및 세부 설명" }
+              },
+              required: ["point", "rationale"]
+            }
           },
           concerns: {
             description: "본문 이탈, 인본주의적 요소, 그리스도 부재 등 맥아더가 경계한 요소들 지적 (Theological Concerns/Critiques)",
             type: Type.ARRAY,
-            items: { type: Type.STRING }
+            items: { 
+              type: Type.OBJECT,
+              properties: {
+                point: { type: Type.STRING, description: "핵심 지적 사항" },
+                rationale: { type: Type.STRING, description: "존 맥아더의 신학적 근거 및 세부 설명" }
+              },
+              required: ["point", "rationale"]
+            }
           },
           evaluation: {
             description: "이 설교가 더 참된 '강해설교'가 되기 위해 보완해야 할 점 총평 (Overall Evaluation & Suggestions)",
@@ -116,9 +130,21 @@ async function startServer() {
           macArthurIndex: {
             description: "맥아더의 강해설교 철학에 얼마나 일치하는지 수치화 (0~100) (MacArthur Index)",
             type: Type.INTEGER
+          },
+          mentionedVerses: {
+            description: "본문이나 분석에서 언급된 주요 성경 구절들과 그에 대한 존 맥아더의 주석적 견해 (Mentioned Bible Verses and MacArthur's Exegetical View)",
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                verse: { type: Type.STRING, description: "성경 구절 (예: 로마서 8:28)" },
+                exegeticalView: { type: Type.STRING, description: "해당 구절에 대한 존 맥아더의 주석적/강해적 견해 및 해석 원칙" }
+              },
+              required: ["verse", "exegeticalView"]
+            }
           }
         },
-        required: ["summary", "strengths", "concerns", "evaluation", "macArthurIndex"]
+        required: ["summary", "strengths", "concerns", "evaluation", "macArthurIndex", "mentionedVerses"]
       };
 
       const systemInstruction = `

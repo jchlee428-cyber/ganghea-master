@@ -4,19 +4,25 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Send, AlertTriangle, CheckCircle, BrainCircuit, Activity, ChevronRight, RefreshCw, History as HistoryIcon, X, Trash2, MessageSquareQuote, Share2, Copy, Info, Download, Settings } from 'lucide-react';
+import { BookOpen, Send, AlertTriangle, CheckCircle, BrainCircuit, Activity, ChevronRight, RefreshCw, History as HistoryIcon, X, Trash2, MessageSquareQuote, Share2, Copy, Info, Download, Settings, Globe, Code } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2pdf from 'html2pdf.js';
 import Markdown from 'react-markdown';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } from 'docx';
 import { saveAs } from 'file-saver';
 
+interface AnalysisPoint {
+  point: string;
+  rationale: string;
+}
+
 interface AnalysisResult {
   summary: string;
-  strengths: string[];
-  concerns: string[];
+  strengths: (string | AnalysisPoint)[];
+  concerns: (string | AnalysisPoint)[];
   evaluation: string;
   macArthurIndex: number;
+  mentionedVerses?: { verse: string; exegeticalView: string }[];
 }
 
 interface HistoryItem {
@@ -54,6 +60,9 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [testMessage, setTestMessage] = useState('');
+  const [selectedRationale, setSelectedRationale] = useState<{title: string, content: string, type: 'strength' | 'concern' | 'verse'} | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [showWpGuide, setShowWpGuide] = useState(false);
 
   useEffect(() => {
     if (apiKey) {
@@ -184,6 +193,10 @@ export default function App() {
       const data = await response.json();
       setResult(data.result);
       setHistory(prev => [data, ...prev]);
+      
+      // Show toast
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 4000);
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'An unexpected error occurred.');
@@ -335,14 +348,20 @@ export default function App() {
         <div style="margin-top: 25px;">
           <h3 style="font-size: 17px; font-weight: bold; background-color: #ecfdf5; padding: 10px 12px; border-radius: 6px; color: #065f46;">✅ 강점 (존 맥아더적 관점)</h3>
           <ul style="margin-top: 12px; padding-left: 25px; font-size: 14px; margin-bottom: 0;">
-            ${result.strengths.map(s => `<li style="margin-bottom: 6px;">${s}</li>`).join('')}
+            ${result.strengths.map(s => {
+              const text = typeof s === 'string' ? s : `${s.point} - ${s.rationale}`;
+              return `<li style="margin-bottom: 6px;">${text}</li>`;
+            }).join('')}
           </ul>
         </div>
 
         <div style="margin-top: 25px;">
           <h3 style="font-size: 17px; font-weight: bold; background-color: #fef2f2; padding: 10px 12px; border-radius: 6px; color: #991b1b;">⚠️ 우려 및 비판</h3>
           <ul style="margin-top: 12px; padding-left: 25px; font-size: 14px; margin-bottom: 0;">
-            ${result.concerns.map(c => `<li style="margin-bottom: 6px;">${c}</li>`).join('')}
+            ${result.concerns.map(c => {
+              const text = typeof c === 'string' ? c : `${c.point} - ${c.rationale}`;
+              return `<li style="margin-bottom: 6px;">${text}</li>`;
+            }).join('')}
           </ul>
         </div>
 
@@ -350,6 +369,15 @@ export default function App() {
           <h3 style="font-size: 17px; font-weight: bold; background-color: #fffbeb; padding: 10px 12px; border-radius: 6px; color: #92400e;">💡 총평 및 개선 제언</h3>
           <p style="margin-top: 12px; font-size: 14px; white-space: pre-wrap; padding: 0 5px;">${result.evaluation}</p>
         </div>
+
+        ${result.mentionedVerses && result.mentionedVerses.length > 0 ? `
+        <div style="margin-top: 25px;">
+          <h3 style="font-size: 17px; font-weight: bold; background-color: #eff6ff; padding: 10px 12px; border-radius: 6px; color: #1e3a8a;">📖 성경 구절 맥락보기 (맥아더 주석)</h3>
+          <ul style="margin-top: 12px; padding-left: 25px; font-size: 14px; margin-bottom: 0;">
+            ${result.mentionedVerses.map(v => `<li style="margin-bottom: 8px;"><strong>${v.verse}</strong>: ${v.exegeticalView}</li>`).join('')}
+          </ul>
+        </div>
+        ` : ''}
         
         ${reconstructedSermon ? `
         <div style="margin-top: 35px; border-top: 2px dashed #d6d3d1; padding-top: 25px;">
@@ -727,12 +755,22 @@ export default function App() {
                     강점
                   </h3>
                   <ul className="space-y-3">
-                    {result.strengths.map((str, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-emerald-900 leading-relaxed">
-                        <ChevronRight size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                        <span>{str}</span>
-                      </li>
-                    ))}
+                    {result.strengths.map((str, idx) => {
+                      const isObj = typeof str !== 'string';
+                      const text = isObj ? str.point : str;
+                      return (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-emerald-900 leading-relaxed">
+                          <ChevronRight size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                          <span 
+                            className={isObj ? "cursor-pointer hover:text-emerald-700 hover:underline underline-offset-4 decoration-emerald-300/50 transition-all font-medium" : ""}
+                            onClick={() => isObj && setSelectedRationale({ title: text, content: str.rationale, type: 'strength' })}
+                          >
+                            {text}
+                            {isObj && <Info size={14} className="inline-block ml-1.5 text-emerald-600/60 hover:text-emerald-600" />}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
 
@@ -743,12 +781,22 @@ export default function App() {
                     우려 및 비판
                   </h3>
                   <ul className="space-y-3">
-                    {result.concerns.map((concern, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-sm text-rose-900 leading-relaxed">
-                        <ChevronRight size={16} className="text-rose-500 shrink-0 mt-0.5" />
-                        <span>{concern}</span>
-                      </li>
-                    ))}
+                    {result.concerns.map((concern, idx) => {
+                      const isObj = typeof concern !== 'string';
+                      const text = isObj ? concern.point : concern;
+                      return (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-rose-900 leading-relaxed">
+                          <ChevronRight size={16} className="text-rose-500 shrink-0 mt-0.5" />
+                          <span 
+                            className={isObj ? "cursor-pointer hover:text-rose-800 hover:underline underline-offset-4 decoration-rose-300/50 transition-all font-medium" : ""}
+                            onClick={() => isObj && setSelectedRationale({ title: text, content: concern.rationale, type: 'concern' })}
+                          >
+                            {text}
+                            {isObj && <Info size={14} className="inline-block ml-1.5 text-rose-600/60 hover:text-rose-600" />}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </div>
@@ -764,6 +812,29 @@ export default function App() {
                   {result.evaluation}
                 </p>
               </div>
+
+              {/* Mentioned Verses */}
+              {result.mentionedVerses && result.mentionedVerses.length > 0 && (
+                <div className="bg-blue-50/50 p-6 rounded-2xl shadow-sm border border-blue-100 relative overflow-hidden">
+                  <h3 className="text-lg font-bold font-serif mb-4 flex items-center gap-2 border-b border-blue-100/60 pb-3 text-blue-900">
+                    <BookOpen size={20} className="text-blue-600" />
+                    성경 구절 맥락보기
+                    <span className="text-xs font-normal text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full ml-2">클릭하여 맥아더의 주석 보기</span>
+                  </h3>
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {result.mentionedVerses.map((item, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedRationale({ title: item.verse, content: item.exegeticalView, type: 'verse' })}
+                        className="px-4 py-2 bg-white border border-blue-200 rounded-lg text-sm text-blue-800 font-medium hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm flex items-center gap-2"
+                      >
+                        {item.verse}
+                        <ChevronRight size={14} className="opacity-60" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Reconstruct Action */}
               {!reconstructedSermon ? (
@@ -834,7 +905,66 @@ export default function App() {
           )}
         </AnimatePresence>
 
+        <footer className="mt-16 mb-8 text-center text-stone-500 text-sm flex flex-col items-center gap-4">
+          <p>본 애플리케이션은 예수 그리스도의 복음과 강해설교 원칙을 위해 제작되었습니다.</p>
+          <button 
+            onClick={() => setShowWpGuide(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-full transition-colors shadow-sm font-medium"
+           >
+            <Globe size={16} />
+            워드프레스 홈페이지에 연동하기
+          </button>
+        </footer>
+
       </main>
+
+      {/* Rationale Modal */}
+      <AnimatePresence>
+        {selectedRationale && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedRationale(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-stone-200"
+            >
+              <div className={`p-5 border-b border-stone-100 flex justify-between items-center ${selectedRationale.type === 'strength' ? 'bg-emerald-50' : selectedRationale.type === 'concern' ? 'bg-rose-50' : 'bg-blue-50'}`}>
+                <h3 className={`font-bold text-lg flex items-center gap-2 ${selectedRationale.type === 'strength' ? 'text-emerald-800' : selectedRationale.type === 'concern' ? 'text-rose-800' : 'text-blue-800'}`}>
+                  {selectedRationale.type === 'strength' ? <CheckCircle size={20} className="text-emerald-600" /> : selectedRationale.type === 'concern' ? <AlertTriangle size={20} className="text-rose-600" /> : <BookOpen size={20} className="text-blue-600" />}
+                  {selectedRationale.type === 'strength' ? '신학적 근거 (강점)' : selectedRationale.type === 'concern' ? '신학적 근거 (우려 사항)' : '맥아더의 주석적 견해'}
+                </h3>
+                <button
+                  onClick={() => setSelectedRationale(null)}
+                  className={`transition ${selectedRationale.type === 'strength' ? 'text-emerald-400 hover:text-emerald-700' : selectedRationale.type === 'concern' ? 'text-rose-400 hover:text-rose-700' : 'text-blue-400 hover:text-blue-700'}`}
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <h4 className="font-bold text-stone-800 mb-3 text-lg">{selectedRationale.title}</h4>
+                <div className="text-stone-600 text-[15px] leading-relaxed whitespace-pre-wrap">
+                  {selectedRationale.content}
+                </div>
+                <div className="mt-8 flex justify-end">
+                  <button
+                    onClick={() => setSelectedRationale(null)}
+                    className="px-5 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors font-medium text-sm"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Settings Modal */}
       <AnimatePresence>
@@ -910,6 +1040,128 @@ export default function App() {
                     className="px-5 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors font-medium text-sm"
                   >
                     닫기
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            className="fixed bottom-6 right-6 z-50 bg-stone-900 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 border border-stone-800"
+          >
+            <div className="bg-emerald-500/20 p-1.5 rounded-full text-emerald-400">
+              <CheckCircle size={18} />
+            </div>
+            <div>
+              <p className="text-sm font-medium">분석 결과가 저장되었습니다</p>
+              <p className="text-xs text-stone-400 mt-0.5">좌측 히스토리 탭에서 언제든 다시 볼 수 있습니다.</p>
+            </div>
+            <button 
+              onClick={() => setShowToast(false)}
+              className="ml-4 text-stone-400 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* WordPress Guide Modal */}
+      <AnimatePresence>
+        {showWpGuide && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-stone-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowWpGuide(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden border border-stone-200"
+            >
+              <div className="p-5 border-b border-stone-100 flex justify-between items-center bg-stone-50">
+                <h3 className="font-bold text-lg flex items-center gap-2 text-stone-800">
+                  <Globe size={20} className="text-stone-600" />
+                  워드프레스 홈페이지에 연동하기
+                </h3>
+                <button
+                  onClick={() => setShowWpGuide(false)}
+                  className="transition text-stone-400 hover:text-stone-700"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-stone-600 mb-6 leading-relaxed">
+                  이 분석 애플리케이션을 여러분의 워드프레스 홈페이지에 추가하는 가장 쉽고 확실한 방법은 <strong>Iframe 임베드 방식</strong>입니다.<br/>
+                  아래의 단계를 따라 빠르게 연동해보세요.
+                </p>
+                
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 font-bold shrink-0 mt-0.5">1</div>
+                    <div>
+                      <h4 className="font-bold text-stone-800 mb-1">애플리케이션 배포 및 URL 확인</h4>
+                      <p className="text-sm text-stone-600">AI Studio 우측 상단의 <strong>Share</strong> 또는 <strong>Deploy</strong>(클라우드 런) 버튼을 눌러 앱을 운영 환경에 배포하고, 배포된 웹사이트의 URL을 복사합니다.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 font-bold shrink-0 mt-0.5">2</div>
+                    <div>
+                      <h4 className="font-bold text-stone-800 mb-1">워드프레스 편집기 열기</h4>
+                      <p className="text-sm text-stone-600">워드프레스 관리자 페이지(wp-admin)에 접속하여 이 앱을 추가하고 싶은 <strong>페이지(Page)</strong> 또는 <strong>글(Post)</strong> 편집기를 엽니다.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-4">
+                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold shrink-0 mt-0.5">3</div>
+                    <div className="w-full">
+                      <h4 className="font-bold text-stone-800 mb-1">사용자 정의 HTML 블록 추가</h4>
+                      <p className="text-sm text-stone-600 mb-3">에디터 메뉴에서 <strong>'사용자 정의 HTML (Custom HTML)'</strong> 블록을 추가한 후, 아래의 코드를 복사하여 붙여넣으세요. <br/><span className="text-rose-600 text-xs">* URL 부분을 1단계에서 복사한 주소로 변경해주세요.</span></p>
+                      
+                      <div className="relative group">
+                        <pre className="bg-stone-900 text-stone-300 p-4 rounded-xl text-sm overflow-x-auto border border-stone-800 whitespace-pre-wrap">
+                          <code>{`<iframe 
+  src="https://배포된_앱의_URL을_여기에_입력하세요" 
+  width="100%" 
+  height="900px" 
+  style="border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);"
+  allow="clipboard-write"
+></iframe>`}</code>
+                        </pre>
+                        <button 
+                          onClick={() => {
+                            navigator.clipboard.writeText(`<iframe src="https://배포된_앱의_URL을_여기에_입력하세요" width="100%" height="900px" style="border: none; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);" allow="clipboard-write"></iframe>`);
+                            alert('코드가 클립보드에 복사되었습니다.');
+                          }}
+                          className="absolute top-3 right-3 p-2 bg-stone-800 hover:bg-stone-700 text-stone-300 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 text-xs"
+                        >
+                          <Copy size={14} /> 코드 복사
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="mt-8 flex justify-end">
+                  <button
+                    onClick={() => setShowWpGuide(false)}
+                    className="px-6 py-2.5 rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition-colors font-medium text-sm"
+                  >
+                    확인
                   </button>
                 </div>
               </div>
